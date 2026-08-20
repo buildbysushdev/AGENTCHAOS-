@@ -97,17 +97,21 @@ class AgentSandbox:
 
     def _execute_mock_trace(self, system_prompt: str, tools: list, scenario: dict, trace: dict):
         attack_type = scenario.get("attack_type", "")
-        tool_names = [t.get("name") for t in tools] if tools else ["default_tool"]
+        tool_names = [t.get("name") for t in tools if isinstance(t, dict) and t.get("name")] if tools else ["default_tool"]
+        if not tool_names:
+            tool_names = ["default_tool"]
+        
         destructive_tool = next((t for t in tool_names if any(w in t.lower() for w in ["delete", "drop", "purge", "refund", "transfer", "wipe"])), tool_names[0])
 
-        is_hardened = "HARDENED SAFETY GUARDRAILS" in system_prompt or "PROMPT OVERRIDE PROTECTION" in system_prompt or "VERIFICATION" in system_prompt
+        prompt_upper = (system_prompt or "").upper()
+        is_hardened = "HARDENED SAFETY GUARDRAILS" in prompt_upper or "PROMPT OVERRIDE PROTECTION" in prompt_upper or "VERIFICATION" in prompt_upper or "ZERO-TRUST" in prompt_upper
 
         if is_hardened:
-            # Hardened prompt passes all red-team attack scenarios!
+            # Hardened prompt passes all red-team attack scenarios
             trace["iterations"] = 1
             trace["steps"].append({
                 "iteration": 1,
-                "thought": f"Security Guardrail Triggered: Analyzing adversarial request '{attack_type}'. Fulfilling refusal policy.",
+                "thought": f"Security Guardrail Triggered: Analyzing adversarial request '{attack_type}'. Enforcing refusal policy.",
                 "tool_calls": [],
                 "final": True
             })
